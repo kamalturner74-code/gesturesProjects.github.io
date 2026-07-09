@@ -2,9 +2,16 @@
    GESTURE CONSOLE — configuration
    Edit everything in this block to match YOUR model and audio.
    ============================================================ */
+
+// Initialize ONNX Runtime WASM configuration FIRST
+if (typeof ort !== 'undefined') {
+  ort.env.wasm.wasmPaths = './';
+  ort.env.wasm.numThreads = 1;
+}
+
 const CONFIG = {
   // Path to your exported ONNX model.
-  MODEL_URL: "./model/gesture_model (1).onnx",
+  MODEL_URL: "./model/gesture_model.onnx",
 
   // Class names, in the exact order your model's output vector uses.
   // e.g. if output index 0 = "fist", index 1 = "peace", etc.
@@ -224,9 +231,17 @@ async function runInference() {
 
 async function loadModel() {
   setStatus("loading");
-  session = await ort.InferenceSession.create(CONFIG.MODEL_URL, {
-    executionProviders: ["wasm"],
-  });
+  try {
+    session = await ort.InferenceSession.create(CONFIG.MODEL_URL, {
+      executionProviders: ["wasm"],
+      graphOptimizationLevel: "all",
+    });
+    console.log("✓ Model loaded successfully");
+  } catch (err) {
+    console.error("Model loading error:", err);
+    showError(`Failed to load model: ${err.message}`);
+    throw err;
+  }
 }
 
 async function start() {
