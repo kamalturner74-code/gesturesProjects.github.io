@@ -12,11 +12,11 @@ const CONFIG = {
 
   // One audio file per label. Missing entries are silently skipped.
   AUDIO_MAP: {
-    fist: "audio/fist.mp3",
-    peace: "audio/peace.mp3",
-    open_palm: "audio/open_palm.mp3",
-    thumbs_up: "audio/thumbs_up.mp3",
-    ok: "audio/ok.mp3",
+    fist: "./audio/a1.wav",
+    peace: "./audio/a1s.wav",
+    open_palm: "./audio/b1.wav",
+    thumbs_up: "./audio/c1.wav",
+    ok: "./audio/wav_a2.wav",
   },
 
   // Square input size your model expects (e.g. 224 for a 224x224 model).
