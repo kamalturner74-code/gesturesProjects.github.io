@@ -5,7 +5,9 @@
 
 // Initialize ONNX Runtime WASM configuration FIRST
 if (typeof ort !== 'undefined') {
-  ort.env.wasm.wasmPaths = './';
+  // Use CDN-hosted WASM files to avoid 404 errors
+  // This points to the official ONNX Runtime Web distribution
+  ort.env.wasm.wasmPaths = 'https://cdnjs.cloudflare.com/ajax/libs/onnxruntime-web/1.18.0/';
   ort.env.wasm.numThreads = 1;
 }
 
