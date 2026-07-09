@@ -4,7 +4,7 @@
    ============================================================ */
 const CONFIG = {
   // Path to your exported ONNX model.
-  MODEL_URL: "model/model.onnx",
+  MODEL_URL: "C:\Git Hub\gesturesProjects.github.io\gesture-app\gesture-app\model\gesture_model (1).onnx",
 
   // Class names, in the exact order your model's output vector uses.
   // e.g. if output index 0 = "fist", index 1 = "peace", etc.
