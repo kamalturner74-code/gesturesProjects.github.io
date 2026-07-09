@@ -1,0 +1,9 @@
+{
+  "name": "gesture-console",
+  "version": "1.0.0",
+  "description": "Browser-based hand gesture recognition console (ONNX + audio triggers).",
+  "private": true,
+  "scripts": {
+    "start": "npx --yes serve -l 8000 ."
+  }
+}

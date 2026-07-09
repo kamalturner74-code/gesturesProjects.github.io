@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIGNAL — Gesture Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
+<style>
+  :root{
+    --bg:#0b0e0c;
+    --panel:#121712;
+    --panel-line:#1f2921;
+    --phosphor:#6effb0;
+    --phosphor-dim:#3a7a58;
+    --alert:#ff6b4a;
+    --text:#e8ece9;
+    --muted:#7c8a82;
+    --mono:'IBM Plex Mono', monospace;
+    --sans:'IBM Plex Sans', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    min-height:100vh;
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(110,255,176,0.05), transparent 40%),
+      radial-gradient(circle at 80% 90%, rgba(255,107,74,0.04), transparent 40%);
+  }
+
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:18px 28px;
+    border-bottom:1px solid var(--panel-line);
+  }
+  .brand{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  .brand .mark{
+    font-family:var(--mono);
+    font-size:13px;
+    letter-spacing:0.15em;
+    color:var(--phosphor);
+    border:1px solid var(--phosphor-dim);
+    padding:3px 7px;
+    border-radius:2px;
+  }
+  .brand h1{
+    font-size:18px;
+    font-weight:600;
+    letter-spacing:0.02em;
+    margin:0;
+  }
+  .status-pill{
+    font-family:var(--mono);
+    font-size:12px;
+    letter-spacing:0.08em;
+    color:var(--muted);
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--muted);
+    transition:background .2s, box-shadow .2s;
+  }
+  .dot.live{
+    background:var(--phosphor);
+    box-shadow:0 0 8px var(--phosphor);
+    animation:pulse 1.6s ease-in-out infinite;
+  }
+  .dot.err{
+    background:var(--alert);
+    box-shadow:0 0 8px var(--alert);
+  }
+  @keyframes pulse{
+    0%,100%{opacity:1;}
+    50%{opacity:0.4;}
+  }
+
+  .layout{
+    display:grid;
+    grid-template-columns:1.3fr 1fr;
+    gap:24px;
+    padding:24px 28px 40px;
+    max-width:1240px;
+    margin:0 auto;
+  }
+  @media (max-width:880px){
+    .layout{grid-template-columns:1fr;}
+  }
+
+  .scope{
+    position:relative;
+    background:#000;
+    border-radius:6px;
+    overflow:hidden;
+    aspect-ratio:4/3;
+    border:1px solid var(--panel-line);
+  }
+  .scope video{
+    width:100%;height:100%;object-fit:cover;
+    transform:scaleX(-1);
+    filter:saturate(0.9) contrast(1.05);
+    display:block;
+  }
+  .scope .placeholder{
+    position:absolute;inset:0;
+    display:flex;align-items:center;justify-content:center;
+    flex-direction:column;gap:10px;
+    color:var(--muted);
+    font-family:var(--mono);
+    font-size:13px;
+    letter-spacing:0.05em;
+    text-align:center;
+    padding:20px;
+  }
+  .corner{
+    position:absolute;
+    width:22px;height:22px;
+    border:2px solid var(--phosphor);
+    opacity:0.85;
+  }
+  .corner.tl{top:14px;left:14px;border-right:none;border-bottom:none;}
+  .corner.tr{top:14px;right:14px;border-left:none;border-bottom:none;}
+  .corner.bl{bottom:14px;left:14px;border-right:none;border-top:none;}
+  .corner.br{bottom:14px;right:14px;border-left:none;border-top:none;}
+
+  .scanline{
+    position:absolute;left:0;right:0;height:2px;
+    background:linear-gradient(90deg, transparent, var(--phosphor), transparent);
+    opacity:0;
+    pointer-events:none;
+  }
+  .scanline.active{
+    opacity:0.7;
+    animation:sweep 2.2s linear infinite;
+  }
+  @keyframes sweep{
+    0%{top:0%;}
+    100%{top:100%;}
+  }
+
+  .controls{
+    display:flex;
+    gap:10px;
+    margin-top:14px;
+  }
+  button{
+    font-family:var(--mono);
+    font-size:13px;
+    letter-spacing:0.05em;
+    background:transparent;
+    border:1px solid var(--phosphor-dim);
+    color:var(--phosphor);
+    padding:10px 18px;
+    border-radius:3px;
+    cursor:pointer;
+    transition:background .15s, color .15s;
+  }
+  button:hover:not(:disabled){
+    background:rgba(110,255,176,0.08);
+  }
+  button:disabled{
+    opacity:0.35;
+    cursor:not-allowed;
+  }
+  button.stop{
+    border-color:#5a3a30;
+    color:var(--alert);
+  }
+  button.stop:hover:not(:disabled){
+    background:rgba(255,107,74,0.08);
+  }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--panel-line);
+    border-radius:6px;
+    padding:20px 22px;
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+  }
+
+  .readout-label{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:0.14em;
+    color:var(--muted);
+    text-transform:uppercase;
+  }
+  .readout-value{
+    font-family:var(--mono);
+    font-size:36px;
+    font-weight:600;
+    color:var(--text);
+    min-height:44px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  .readout-value .idle{color:var(--muted);font-size:20px;font-weight:400;}
+
+  .meter{
+    width:100%;
+    height:8px;
+    background:#1a201b;
+    border-radius:4px;
+    overflow:hidden;
+    margin-top:6px;
+  }
+  .meter-fill{
+    height:100%;
+    width:0%;
+    background:linear-gradient(90deg, var(--phosphor-dim), var(--phosphor));
+    transition:width .12s ease-out;
+  }
+  .meter-value{
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--muted);
+    margin-top:6px;
+  }
+
+  .divider{
+    height:1px;
+    background:var(--panel-line);
+  }
+
+  .log{
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--muted);
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    max-height:220px;
+    overflow-y:auto;
+  }
+  .log-entry{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    padding:4px 0;
+    border-bottom:1px solid rgba(255,255,255,0.03);
+  }
+  .log-entry .label{color:var(--phosphor);}
+  .log-entry .time{color:var(--muted);white-space:nowrap;}
+
+  .config-note{
+    font-family:var(--mono);
+    font-size:11.5px;
+    line-height:1.6;
+    color:var(--muted);
+    background:rgba(255,255,255,0.02);
+    border:1px dashed var(--panel-line);
+    border-radius:4px;
+    padding:14px 16px;
+  }
+  .config-note code{
+    color:var(--phosphor);
+    background:rgba(110,255,176,0.06);
+    padding:1px 5px;
+    border-radius:3px;
+  }
+  .config-note strong{color:var(--text);}
+
+  .banner{
+    font-family:var(--mono);
+    font-size:12.5px;
+    color:var(--alert);
+    background:rgba(255,107,74,0.08);
+    border:1px solid #5a3a30;
+    border-radius:4px;
+    padding:10px 14px;
+    display:none;
+  }
+  .banner.show{display:block;}
+
+  footer{
+    text-align:center;
+    padding:20px;
+    color:var(--muted);
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:0.08em;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <span class="mark">SIG//01</span>
+    <h1>Gesture Console</h1>
+  </div>
+  <div class="status-pill">
+    <span class="dot" id="statusDot"></span>
+    <span id="statusText">IDLE</span>
+  </div>
+</div>
+
+<div class="layout">
+
+  <div>
+    <div class="scope">
+      <video id="video" autoplay playsinline muted></video>
+      <div class="placeholder" id="placeholder">
+        AWAITING CAMERA<br>press start to begin scanning
+      </div>
+      <div class="corner tl"></div>
+      <div class="corner tr"></div>
+      <div class="corner bl"></div>
+      <div class="corner br"></div>
+      <div class="scanline" id="scanline"></div>
+    </div>
+
+    <div class="controls">
+      <button id="startBtn">▶ Start scanning</button>
+      <button id="stopBtn" class="stop" disabled>■ Stop</button>
+    </div>
+
+    <div class="banner" id="errorBanner"></div>
+  </div>
+
+  <div class="panel">
+    <div>
+      <div class="readout-label">Detected gesture</div>
+      <div class="readout-value" id="gestureReadout"><span class="idle">— no signal —</span></div>
+      <div class="meter"><div class="meter-fill" id="confidenceFill"></div></div>
+      <div class="meter-value" id="confidenceValue">confidence: —</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="readout-label" style="margin-bottom:10px;">Detection log</div>
+      <div class="log" id="log">
+        <div class="log-entry"><span class="label">—</span><span class="time">waiting for first detection</span></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="config-note">
+      <strong>Setup:</strong> edit the <code>CONFIG</code> block at the top of <code>app.js</code>.<br><br>
+      1. Drop your model at <code>model/model.onnx</code><br>
+      2. Set <code>LABELS</code> to your class names, in the exact order your model outputs them<br>
+      3. Add one audio file per label in <code>audio/</code> and map it in <code>AUDIO_MAP</code><br>
+      4. Adjust <code>INPUT_SIZE</code>, <code>LAYOUT</code>, and normalization to match how your model was trained<br><br>
+      Serve this folder with a local server (e.g. <code>python3 -m http.server</code>) — opening the file directly (<code>file://</code>) will block the model fetch.
+    </div>
+  </div>
+
+</div>
+
+<footer>ONNX RUNTIME WEB · RUNS FULLY IN-BROWSER · NO SERVER-SIDE INFERENCE</footer>
+
+<canvas id="hiddenCanvas" style="display:none;"></canvas>
+
+<script src="app.js"></script>
+</body>
+</html>
