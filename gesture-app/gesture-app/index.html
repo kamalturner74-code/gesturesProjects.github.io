@@ -3,370 +3,244 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SIGNAL — Gesture Console</title>
+<title>Handchord — gesture-controlled chords</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
 <style>
   :root{
-    --bg:#0b0e0c;
-    --panel:#121712;
-    --panel-line:#1f2921;
-    --phosphor:#6effb0;
-    --phosphor-dim:#3a7a58;
-    --alert:#ff6b4a;
-    --text:#e8ece9;
-    --muted:#7c8a82;
-    --mono:'IBM Plex Mono', monospace;
-    --sans:'IBM Plex Sans', sans-serif;
+    --walnut: #2a1f18;
+    --walnut-deep: #1c140f;
+    --parchment: #f0e6d2;
+    --amber: #d8973c;
+    --amber-glow: #f2b25c;
+    --string: #b9a888;
+    --ok: #6d9b8b;
+    --warn: #c1613f;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
-    background:var(--bg);
-    color:var(--text);
-    font-family:var(--sans);
+    background:
+      radial-gradient(ellipse at 20% -10%, #3a2b1f 0%, transparent 60%),
+      var(--walnut);
+    color: var(--parchment);
+    font-family: 'Inter', sans-serif;
     min-height:100vh;
-    background-image:
-      radial-gradient(circle at 20% 10%, rgba(110,255,176,0.05), transparent 40%),
-      radial-gradient(circle at 80% 90%, rgba(255,107,74,0.04), transparent 40%);
+    padding: 32px 20px 60px;
   }
-
-  .topbar{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    padding:18px 28px;
-    border-bottom:1px solid var(--panel-line);
-  }
-  .brand{
-    display:flex;
-    align-items:baseline;
-    gap:10px;
-  }
-  .brand .mark{
-    font-family:var(--mono);
-    font-size:13px;
-    letter-spacing:0.15em;
-    color:var(--phosphor);
-    border:1px solid var(--phosphor-dim);
-    padding:3px 7px;
-    border-radius:2px;
-  }
-  .brand h1{
-    font-size:18px;
-    font-weight:600;
-    letter-spacing:0.02em;
-    margin:0;
-  }
-  .status-pill{
-    font-family:var(--mono);
+  .wrap{max-width:1100px;margin:0 auto;}
+  header{margin-bottom:28px;}
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
     font-size:12px;
-    letter-spacing:0.08em;
-    color:var(--muted);
-    display:flex;
-    align-items:center;
-    gap:8px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color: var(--amber-glow);
+    margin-bottom:10px;
   }
-  .dot{
-    width:8px;height:8px;border-radius:50%;
-    background:var(--muted);
-    transition:background .2s, box-shadow .2s;
+  h1{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size: clamp(32px, 5vw, 52px);
+    margin:0 0 8px;
+    letter-spacing:-0.01em;
   }
-  .dot.live{
-    background:var(--phosphor);
-    box-shadow:0 0 8px var(--phosphor);
-    animation:pulse 1.6s ease-in-out infinite;
-  }
-  .dot.err{
-    background:var(--alert);
-    box-shadow:0 0 8px var(--alert);
-  }
-  @keyframes pulse{
-    0%,100%{opacity:1;}
-    50%{opacity:0.4;}
+  .sub{
+    color: var(--string);
+    font-size:15px;
+    max-width:560px;
+    line-height:1.5;
   }
 
   .layout{
     display:grid;
-    grid-template-columns:1.3fr 1fr;
-    gap:24px;
-    padding:24px 28px 40px;
-    max-width:1240px;
-    margin:0 auto;
+    grid-template-columns: 1.1fr 1fr;
+    gap:28px;
+    margin-top:32px;
   }
-  @media (max-width:880px){
-    .layout{grid-template-columns:1fr;}
+  @media (max-width: 880px){ .layout{grid-template-columns:1fr;} }
+
+  .panel{
+    background: linear-gradient(180deg, #34281d, #251b13);
+    border: 1px solid #4a3a2a;
+    border-radius: 14px;
+    padding: 20px;
   }
 
-  .scope{
+  .cam-shell{
     position:relative;
-    background:#000;
-    border-radius:6px;
+    border-radius: 10px;
     overflow:hidden;
-    aspect-ratio:4/3;
-    border:1px solid var(--panel-line);
+    background:#000;
+    aspect-ratio: 1/1;
   }
-  .scope video{
-    width:100%;height:100%;object-fit:cover;
-    transform:scaleX(-1);
-    filter:saturate(0.9) contrast(1.05);
-    display:block;
+  video, canvas.overlay{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    object-fit: cover;
+    transform: scaleX(-1);
   }
-  .scope .placeholder{
-    position:absolute;inset:0;
-    display:flex;align-items:center;justify-content:center;
-    flex-direction:column;gap:10px;
-    color:var(--muted);
-    font-family:var(--mono);
-    font-size:13px;
-    letter-spacing:0.05em;
-    text-align:center;
-    padding:20px;
-  }
-  .corner{
-    position:absolute;
-    width:22px;height:22px;
-    border:2px solid var(--phosphor);
-    opacity:0.85;
-  }
-  .corner.tl{top:14px;left:14px;border-right:none;border-bottom:none;}
-  .corner.tr{top:14px;right:14px;border-left:none;border-bottom:none;}
-  .corner.bl{bottom:14px;left:14px;border-right:none;border-top:none;}
-  .corner.br{bottom:14px;right:14px;border-left:none;border-top:none;}
+  canvas.overlay{ pointer-events:none; }
 
-  .scanline{
-    position:absolute;left:0;right:0;height:2px;
-    background:linear-gradient(90deg, transparent, var(--phosphor), transparent);
-    opacity:0;
-    pointer-events:none;
-  }
-  .scanline.active{
-    opacity:0.7;
-    animation:sweep 2.2s linear infinite;
-  }
-  @keyframes sweep{
-    0%{top:0%;}
-    100%{top:100%;}
-  }
-
-  .controls{
-    display:flex;
-    gap:10px;
+  .cam-controls{
+    display:flex; align-items:center; justify-content:space-between;
     margin-top:14px;
   }
   button{
-    font-family:var(--mono);
-    font-size:13px;
-    letter-spacing:0.05em;
-    background:transparent;
-    border:1px solid var(--phosphor-dim);
-    color:var(--phosphor);
-    padding:10px 18px;
-    border-radius:3px;
-    cursor:pointer;
-    transition:background .15s, color .15s;
-  }
-  button:hover:not(:disabled){
-    background:rgba(110,255,176,0.08);
-  }
-  button:disabled{
-    opacity:0.35;
-    cursor:not-allowed;
-  }
-  button.stop{
-    border-color:#5a3a30;
-    color:var(--alert);
-  }
-  button.stop:hover:not(:disabled){
-    background:rgba(255,107,74,0.08);
-  }
-
-  .panel{
-    background:var(--panel);
-    border:1px solid var(--panel-line);
-    border-radius:6px;
-    padding:20px 22px;
-    display:flex;
-    flex-direction:column;
-    gap:18px;
-  }
-
-  .readout-label{
-    font-family:var(--mono);
-    font-size:11px;
-    letter-spacing:0.14em;
-    color:var(--muted);
-    text-transform:uppercase;
-  }
-  .readout-value{
-    font-family:var(--mono);
-    font-size:36px;
+    font-family:'Inter', sans-serif;
     font-weight:600;
-    color:var(--text);
-    min-height:44px;
-    display:flex;
-    align-items:center;
-    gap:12px;
+    font-size:14px;
+    background: var(--amber);
+    color: var(--walnut-deep);
+    border:none;
+    padding:10px 18px;
+    border-radius:8px;
+    cursor:pointer;
+    transition: transform 0.12s ease, background 0.12s ease;
   }
-  .readout-value .idle{color:var(--muted);font-size:20px;font-weight:400;}
+  button:hover{ background: var(--amber-glow); }
+  button:active{ transform: scale(0.97); }
+  button:disabled{ opacity:0.4; cursor:default; }
+  button:focus-visible{ outline:2px solid var(--parchment); outline-offset:2px; }
 
-  .meter{
-    width:100%;
-    height:8px;
-    background:#1a201b;
-    border-radius:4px;
-    overflow:hidden;
-    margin-top:6px;
+  .status-line{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    color: var(--string);
   }
-  .meter-fill{
-    height:100%;
-    width:0%;
-    background:linear-gradient(90deg, var(--phosphor-dim), var(--phosphor));
-    transition:width .12s ease-out;
-  }
-  .meter-value{
-    font-family:var(--mono);
-    font-size:12px;
-    color:var(--muted);
-    margin-top:6px;
-  }
-
-  .divider{
-    height:1px;
-    background:var(--panel-line);
-  }
-
-  .log{
-    font-family:var(--mono);
-    font-size:12px;
-    color:var(--muted);
-    display:flex;
-    flex-direction:column;
-    gap:6px;
-    max-height:220px;
-    overflow-y:auto;
-  }
-  .log-entry{
-    display:flex;
-    justify-content:space-between;
-    gap:10px;
-    padding:4px 0;
-    border-bottom:1px solid rgba(255,255,255,0.03);
-  }
-  .log-entry .label{color:var(--phosphor);}
-  .log-entry .time{color:var(--muted);white-space:nowrap;}
-
-  .config-note{
-    font-family:var(--mono);
-    font-size:11.5px;
-    line-height:1.6;
-    color:var(--muted);
-    background:rgba(255,255,255,0.02);
-    border:1px dashed var(--panel-line);
-    border-radius:4px;
-    padding:14px 16px;
-  }
-  .config-note code{
-    color:var(--phosphor);
-    background:rgba(110,255,176,0.06);
-    padding:1px 5px;
-    border-radius:3px;
-  }
-  .config-note strong{color:var(--text);}
+  .status-line b{ color: var(--amber-glow); }
 
   .banner{
-    font-family:var(--mono);
+    font-family:'IBM Plex Mono', monospace;
     font-size:12.5px;
-    color:var(--alert);
-    background:rgba(255,107,74,0.08);
-    border:1px solid #5a3a30;
-    border-radius:4px;
-    padding:10px 14px;
+    line-height:1.6;
+    background: #3a2417;
+    border:1px solid var(--warn);
+    color:#f0d6c6;
+    padding:12px 14px;
+    border-radius:8px;
+    margin-top:14px;
     display:none;
   }
-  .banner.show{display:block;}
+  .banner.show{ display:block; }
+  .banner code{
+    background:#1c140f;
+    padding:1px 5px;
+    border-radius:4px;
+  }
+
+  .reading{
+    display:flex;
+    align-items:baseline;
+    gap:14px;
+    margin-bottom:18px;
+  }
+  .reading .gesture{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:30px;
+    color: var(--amber-glow);
+  }
+  .reading .chord{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:15px;
+    color: var(--string);
+  }
+  .conf-bar{
+    height:4px; width:100%;
+    background:#1c140f;
+    border-radius:2px;
+    overflow:hidden;
+    margin-top:10px;
+  }
+  .conf-fill{
+    height:100%;
+    width:0%;
+    background: var(--amber);
+    transition: width 0.15s ease;
+  }
+
+  .wheel-grid{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap:8px;
+  }
+  .peg{
+    border:1px solid #4a3a2a;
+    background:#1c140f;
+    border-radius:9px;
+    padding:10px 8px;
+    text-align:center;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  }
+  .peg .g{
+    font-size:11px;
+    font-family:'IBM Plex Mono', monospace;
+    color: var(--string);
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+  }
+  .peg .c{
+    font-family:'Fraunces', serif;
+    font-size:16px;
+    font-weight:600;
+    margin-top:2px;
+  }
+  .peg.active{
+    background: linear-gradient(180deg,#4a3620,#382712);
+    border-color: var(--amber);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px -6px rgba(216,151,60,0.5);
+  }
 
   footer{
-    text-align:center;
-    padding:20px;
-    color:var(--muted);
-    font-family:var(--mono);
-    font-size:11px;
-    letter-spacing:0.08em;
+    margin-top:36px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px;
+    color:#8a7a63;
+    line-height:1.6;
   }
 </style>
 </head>
 <body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Gesture → chord instrument</div>
+    <h1>Handchord</h1>
+    <p class="sub">Show a gesture to the camera. Your model reads the shape of your hand; the chord that matches it rings out.</p>
+  </header>
 
-<div class="topbar">
-  <div class="brand">
-    <span class="mark">SIG//01</span>
-    <h1>Gesture Console</h1>
-  </div>
-  <div class="status-pill">
-    <span class="dot" id="statusDot"></span>
-    <span id="statusText">IDLE</span>
-  </div>
-</div>
-
-<div class="layout">
-
-  <div>
-    <div class="scope">
-      <video id="video" autoplay playsinline muted></video>
-      <div class="placeholder" id="placeholder">
-        AWAITING CAMERA<br>press start to begin scanning
+  <div class="layout">
+    <div class="panel">
+      <div class="cam-shell">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="overlay" class="overlay"></canvas>
       </div>
-      <div class="corner tl"></div>
-      <div class="corner tr"></div>
-      <div class="corner bl"></div>
-      <div class="corner br"></div>
-      <div class="scanline" id="scanline"></div>
-    </div>
-
-    <div class="controls">
-      <button id="startBtn">▶ Start scanning</button>
-      <button id="stopBtn" class="stop" disabled>■ Stop</button>
-    </div>
-
-    <div class="banner" id="errorBanner"></div>
-  </div>
-
-  <div class="panel">
-    <div>
-      <div class="readout-label">Detected gesture</div>
-      <div class="readout-value" id="gestureReadout"><span class="idle">— no signal —</span></div>
-      <div class="meter"><div class="meter-fill" id="confidenceFill"></div></div>
-      <div class="meter-value" id="confidenceValue">confidence: —</div>
-    </div>
-
-    <div class="divider"></div>
-
-    <div>
-      <div class="readout-label" style="margin-bottom:10px;">Detection log</div>
-      <div class="log" id="log">
-        <div class="log-entry"><span class="label">—</span><span class="time">waiting for first detection</span></div>
+      <div class="cam-controls">
+        <button id="startBtn">Start camera</button>
+        <span class="status-line" id="statusLine">idle</span>
       </div>
+      <div class="banner" id="modelBanner"></div>
     </div>
 
-    <div class="divider"></div>
-
-    <div class="config-note">
-      <strong>Setup:</strong> edit the <code>CONFIG</code> block at the top of <code>app.js</code>.<br><br>
-      1. Drop your model at <code>model/model.onnx</code><br>
-      2. Set <code>LABELS</code> to your class names, in the exact order your model outputs them<br>
-      3. Add one audio file per label in <code>audio/</code> and map it in <code>AUDIO_MAP</code><br>
-      4. Adjust <code>INPUT_SIZE</code>, <code>LAYOUT</code>, and normalization to match how your model was trained<br><br>
-      Serve this folder with a local server (e.g. <code>python3 -m http.server</code>) — opening the file directly (<code>file://</code>) will block the model fetch.
+    <div class="panel">
+      <div class="reading">
+        <div>
+          <div class="gesture" id="currentGesture">—</div>
+          <div class="chord" id="currentChord">waiting for a gesture</div>
+        </div>
+      </div>
+      <div class="conf-bar"><div class="conf-fill" id="confFill"></div></div>
+      <div style="height:18px"></div>
+      <div class="wheel-grid" id="wheelGrid"></div>
     </div>
   </div>
 
+  <footer>
+    Model input: 240×240 RGB, ImageNet normalization · Output: 18-way softmax · Inference runs fully in your browser via onnxruntime-web (wasm), nothing is uploaded.
+  </footer>
 </div>
-
-<footer>ONNX RUNTIME WEB · RUNS FULLY IN-BROWSER · NO SERVER-SIDE INFERENCE</footer>
-
-<canvas id="hiddenCanvas" style="display:none;"></canvas>
 
 <script src="app.js"></script>
 </body>
