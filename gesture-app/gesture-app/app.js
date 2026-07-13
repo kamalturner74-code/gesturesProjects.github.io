@@ -73,7 +73,11 @@ const STD = [0.229, 0.224, 0.225];
 // ---- MODEL CONFIGURATION ----
 // Update MODEL_FILENAME to match your ONNX model file name
 const MODEL_FILENAME = 'model.onnx'; // Change this to your model filename
-const MODEL_PATH = `../models/${MODEL_FILENAME}`;
+// Construct the correct path for GitHub Pages and local development
+const BASE_PATH = window.location.pathname.includes('gesturesProjects.github.io') 
+  ? '/gesturesProjects.github.io/gesture-app/models/'
+  : './models/';
+const MODEL_PATH = BASE_PATH + MODEL_FILENAME;
 
 let session = null;
 let running = false;
