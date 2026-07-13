@@ -82,7 +82,8 @@ const INFERENCE_INTERVAL_MS = 220;
 async function loadModel() {
   try {
     ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/';
-    session = await ort.InferenceSession.create('./model/gesture_model.onnx', { executionProviders: ['wasm'] });
+    // Load the bundled ONNX model included in the repo
+    session = await ort.InferenceSession.create('./model/model/efficientnet_b1_baseline.onnx', { executionProviders: ['wasm'] });
     statusLine.textContent = 'model loaded';
     modelBanner.classList.remove('show');
   } catch (err) {
@@ -90,10 +91,7 @@ async function loadModel() {
     modelBanner.classList.add('show');
     modelBanner.innerHTML =
       `Model didn't load: <code>${(err && err.message) || err}</code><br><br>` +
-      `This model was exported with its weights in a separate file. Make sure <code>gesture_model.onnx.data</code> ` +
-      `sits in the same folder as <code>gesture_model.onnx</code> and <code>index.html</code>, and that you're viewing ` +
-      `this page through a local server (not opened directly as a file) — e.g. run <code>python3 -m http.server</code> ` +
-      `in this folder, then open <code>http://localhost:8000</code>.`;
+      `Ensure <code>./model/model/efficientnet_b1_baseline.onnx</code> exists and that you're serving this site over HTTP (not opening the file directly).`;
     console.error(err);
   }
 }
