@@ -70,6 +70,11 @@ const INPUT_SIZE = 240;
 const MEAN = [0.485, 0.456, 0.406];
 const STD = [0.229, 0.224, 0.225];
 
+// ---- MODEL CONFIGURATION ----
+// Update MODEL_FILENAME to match your ONNX model file name
+const MODEL_FILENAME = 'model.onnx'; // Change this to your model filename
+const MODEL_PATH = `../models/${MODEL_FILENAME}`;
+
 let session = null;
 let running = false;
 let lastGesture = null;
@@ -83,13 +88,11 @@ async function loadModel() {
   try {
     ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/';
 
-    const modelUrl = new URL(
-      'https://github.com/kamalturner74-code/gesturesProjects.github.io/raw/refs/heads/main/gesture-app/gesture-app/model/model%202.0-20260713T195603Z-2-001/model%202.0/efficientnet_b0_phase2_best.onnx',
-      window.location.href
-    );
+    // Construct model URL - works for both local and GitHub Pages
+    const modelUrl = new URL(MODEL_PATH, window.location.href).href;
 
-    console.log('Loading model from', modelUrl.href);
-    session = await ort.InferenceSession.create(modelUrl.href, { executionProviders: ['wasm'] });
+    console.log('Loading model from', modelUrl);
+    session = await ort.InferenceSession.create(modelUrl, { executionProviders: ['wasm'] });
     statusLine.textContent = 'model loaded';
     modelBanner.classList.remove('show');
   } catch (err) {
@@ -97,7 +100,7 @@ async function loadModel() {
     modelBanner.classList.add('show');
     modelBanner.innerHTML =
       `Model didn't load: <code>${(err && err.message) || err}</code><br><br>` +
-      `Ensure the model file exists at <code>${modelUrl.href}</code> and that you're serving this site over HTTP (not opening the file directly).`;
+      `Ensure the model file exists at <code>${MODEL_PATH}</code> and that you're serving this site over HTTP (not opening the file directly).`;
     console.error(err);
   }
 }
