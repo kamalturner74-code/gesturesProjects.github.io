@@ -82,8 +82,14 @@ const INFERENCE_INTERVAL_MS = 220;
 async function loadModel() {
   try {
     ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/';
-    // Load the bundled ONNX model included in the repo
-    session = await ort.InferenceSession.create('./model/model/efficientnet_b1_baseline.onnx', { executionProviders: ['wasm'] });
+
+    const modelUrl = new URL(
+      'https://github.com/kamalturner74-code/gesturesProjects.github.io/raw/refs/heads/main/gesture-app/gesture-app/model/model%202.0-20260713T195603Z-2-001/model%202.0/efficientnet_b0_phase2_best.onnx',
+      window.location.href
+    );
+
+    console.log('Loading model from', modelUrl.href);
+    session = await ort.InferenceSession.create(modelUrl.href, { executionProviders: ['wasm'] });
     statusLine.textContent = 'model loaded';
     modelBanner.classList.remove('show');
   } catch (err) {
@@ -91,7 +97,7 @@ async function loadModel() {
     modelBanner.classList.add('show');
     modelBanner.innerHTML =
       `Model didn't load: <code>${(err && err.message) || err}</code><br><br>` +
-      `Ensure <code>./model/model/efficientnet_b1_baseline.onnx</code> exists and that you're serving this site over HTTP (not opening the file directly).`;
+      `Ensure the model file exists at <code>${modelUrl.href}</code> and that you're serving this site over HTTP (not opening the file directly).`;
     console.error(err);
   }
 }
