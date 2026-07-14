@@ -72,6 +72,7 @@ const STD = [0.229, 0.224, 0.225];
 
 // ---- MODEL CONFIGURATION ----
 const MODEL_PATH = 'https://raw.githubusercontent.com/kamalturner74-code/gesturesProjects.github.io/0b089a547bcef294a6739f088cf6fa959669063f/gesture-app/gesture-app/model/model%202.0-20260713T195603Z-2-001/model%202.0/efficientnet_b0_phase2_best.onnx';
+const MODEL_DATA_PATH = 'https://raw.githubusercontent.com/kamalturner74-code/gesturesProjects.github.io/0b089a547bcef294a6739f088cf6fa959669063f/gesture-app/gesture-app/model/model%202.0-20260713T195603Z-2-001/model%202.0/efficientnet_b0_phase2_best.onnx.data';
 
 let session = null;
 let running = false;
@@ -86,11 +87,32 @@ async function loadModel() {
   try {
     ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.0/dist/';
 
-    console.log('Loading model from GitHub:', MODEL_PATH);
-    // Pass the URL directly (not pre-fetched bytes) so onnxruntime-web can
-    // resolve and fetch the companion "efficientnet_b0_phase2_best.onnx.data"
-    // file that sits alongside the .onnx graph in the same folder.
-    session = await ort.InferenceSession.create(MODEL_PATH, { executionProviders: ['wasm'] });
+    console.log('Loading model from GitHub');
+    console.log('Fetching:', MODEL_PATH);
+    console.log('Fetching:', MODEL_DATA_PATH);
+
+    // Fetch both the .onnx and .onnx.data files
+    const [onnxResponse, dataResponse] = await Promise.all([
+      fetch(MODEL_PATH),
+      fetch(MODEL_DATA_PATH)
+    ]);
+
+    if (!onnxResponse.ok) {
+      throw new Error(`Failed to fetch .onnx: ${onnxResponse.status} ${onnxResponse.statusText}`);
+    }
+    if (!dataResponse.ok) {
+      throw new Error(`Failed to fetch .onnx.data: ${dataResponse.status} ${dataResponse.statusText}`);
+    }
+
+    const onnxBytes = new Uint8Array(await onnxResponse.arrayBuffer());
+    const dataBytes = new Uint8Array(await dataResponse.arrayBuffer());
+
+    // Create session with both files
+    session = await ort.InferenceSession.create(onnxBytes, {
+      executionProviders: ['wasm'],
+      externalData: [{ path: 'efficientnet_b0_phase2_best.onnx.data', data: dataBytes }]
+    });
+
     statusLine.textContent = 'model loaded';
     modelBanner.classList.remove('show');
   } catch (err) {
