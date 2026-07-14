@@ -83,13 +83,17 @@ async function loadModel() {
   try {
     ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/';
 
-    const modelUrl = new URL(
-      'https://github.com/kamalturner74-code/gesturesProjects.github.io/raw/refs/heads/main/gesture-app/gesture-app/model/model%202.0-20260713T195603Z-2-001/model%202.0/efficientnet_b0_phase2_best.onnx',
-      window.location.href
-    );
+    const modelUrl = 'https://raw.githubusercontent.com/gesturesProjects/gesturesProjects.github.io/main/gesture-app/gesture-app/model/model%202.0-20260713T195603Z-2-001/model%202.0/efficientnet_b0_phase2_best.onnx';
 
-    console.log('Loading model from', modelUrl.href);
-    session = await ort.InferenceSession.create(modelUrl.href, { executionProviders: ['wasm'] });
+    console.log('Fetching model from', modelUrl);
+    const response = await fetch(modelUrl.href);
+    if (!response.ok) 
+      {
+      throw new Error(`Failed to fetch model: ${response.status} ${response.statusText}`);
+    }
+
+    const modelBytes = new Uint8Array(await response.arrayBuffer());
+    session = await ort.InferenceSession.create(modelBytes, { executionProviders: ['wasm'] });
     statusLine.textContent = 'model loaded';
     modelBanner.classList.remove('show');
   } catch (err) {
@@ -97,7 +101,7 @@ async function loadModel() {
     modelBanner.classList.add('show');
     modelBanner.innerHTML =
       `Model didn't load: <code>${(err && err.message) || err}</code><br><br>` +
-      `Ensure the model file exists at <code>${modelUrl.href}</code> and that you're serving this site over HTTP (not opening the file directly).`;
+      `Failed to fetch model from GitHub. Check your internet connection and ensure the model file is committed to the repository.`;
     console.error(err);
   }
 }
