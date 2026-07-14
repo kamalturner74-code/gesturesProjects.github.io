@@ -71,7 +71,7 @@ const MEAN = [0.485, 0.456, 0.406];
 const STD = [0.229, 0.224, 0.225];
 
 // ---- MODEL CONFIGURATION ----
-const MODEL_PATH = 'https://raw.githubusercontent.com/gesturesProjects/gesturesProjects.github.io/main/gesture-app/gesture-app/model/model%202.0-20260713T195603Z-2-001/model%202.0/efficientnet_b0_phase2_best.onnx';
+const MODEL_PATH = 'gesture-app/gesture-app/model/model 2.0-20260713T195603Z-2-001/model 2.0/efficientnet_b0_phase2_best.onnx';
 
 let session = null;
 let running = false;
