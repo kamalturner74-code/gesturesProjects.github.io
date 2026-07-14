@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Handchord — gesture to chord</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/ort.min.js"></script>
+<style>
+  :root{
+    --ink:#171310;
+    --stage:#1d1712;
+    --parchment:#f2e9d8;
+    --brass:#c9973f;
+    --brass-bright:#e8b45c;
+    --teal:#3f7a72;
+    --danger:#b1493f;
+    --line: rgba(242,233,216,0.14);
+    --radius: 18px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse at 20% -10%, rgba(201,151,63,0.10), transparent 55%),
+      radial-gradient(ellipse at 100% 110%, rgba(63,122,114,0.12), transparent 55%),
+      var(--ink);
+    color:var(--parchment);
+    font-family: 'JetBrains Mono', monospace;
+    min-height:100vh;
+    padding: 0 0 80px 0;
+  }
+  .wrap{max-width:1080px; margin:0 auto; padding: 48px 24px 0;}
+
+  header{display:flex; align-items:baseline; justify-content:space-between; gap:24px; flex-wrap:wrap; border-bottom:1px solid var(--line); padding-bottom:28px;}
+  .brand{display:flex; flex-direction:column; gap:6px;}
+  .brand .eyebrow{
+    font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:var(--teal); font-weight:500;
+  }
+  h1{
+    font-family:'Fraunces', serif; font-weight:700; font-size:clamp(32px,5vw,52px);
+    margin:0; letter-spacing:-0.01em; color:var(--parchment);
+  }
+  h1 em{font-style:italic; color:var(--brass-bright); font-weight:400;}
+  .subtitle{max-width:420px; font-size:14px; line-height:1.6; color:rgba(242,233,216,0.65); font-family:'JetBrains Mono',monospace;}
+
+  main{display:grid; grid-template-columns: 1.15fr 1fr; gap:32px; margin-top:40px;}
+  @media (max-width:860px){ main{grid-template-columns:1fr;} }
+
+  .panel{
+    background: rgba(242,233,216,0.03);
+    border:1px solid var(--line);
+    border-radius: var(--radius);
+    padding:24px;
+  }
+
+  .cam-wrap{position:relative; border-radius:12px; overflow:hidden; background:#0d0a08; aspect-ratio:4/3;}
+  video{width:100%; height:100%; object-fit:cover; transform:scaleX(-1); display:block;}
+  .cam-frame{
+    position:absolute; inset:14px; border:1.5px dashed rgba(232,180,92,0.45); border-radius:10px; pointer-events:none;
+  }
+  .cam-overlay{
+    position:absolute; left:0; right:0; bottom:0; padding:12px 14px;
+    background:linear-gradient(to top, rgba(13,10,8,0.92), transparent);
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+  }
+  .status-dot{width:8px; height:8px; border-radius:50%; background:var(--danger); display:inline-block; margin-right:8px; transition:background .2s;}
+  .status-dot.live{background:#7fbf8f; box-shadow:0 0 8px #7fbf8f;}
+  .status-text{font-size:12px; color:rgba(242,233,216,0.75);}
+
+  button{
+    font-family:'JetBrains Mono', monospace; font-weight:500; font-size:13px;
+    background:var(--brass); color:var(--ink); border:none; border-radius:8px;
+    padding:11px 18px; cursor:pointer; letter-spacing:.02em; transition:transform .12s, background .12s;
+  }
+  button:hover{background:var(--brass-bright);}
+  button:active{transform:scale(0.97);}
+  button:disabled{background:rgba(242,233,216,0.15); color:rgba(242,233,216,0.4); cursor:not-allowed;}
+  button.ghost{background:transparent; border:1px solid var(--line); color:var(--parchment);}
+  button.ghost:hover{border-color:var(--brass); color:var(--brass-bright);}
+
+  .controls{display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;}
+
+  .readout{margin-top:20px; display:flex; flex-direction:column; gap:10px;}
+  .row{display:flex; justify-content:space-between; font-size:12px; color:rgba(242,233,216,0.55);}
+  .bar-track{height:6px; border-radius:4px; background:rgba(242,233,216,0.08); overflow:hidden;}
+  .bar-fill{height:100%; background:var(--teal); width:0%; transition:width .15s ease-out;}
+
+  /* Chord wheel */
+  .wheel-title{
+    font-family:'Fraunces', serif; font-size:20px; font-weight:600; margin:0 0 4px 0;
+  }
+  .wheel-sub{font-size:12px; color:rgba(242,233,216,0.5); margin:0 0 20px 0;}
+  .wheel-holder{display:flex; justify-content:center; padding:8px 0 4px;}
+  svg#wheel{width:100%; max-width:340px; height:auto;}
+  .note-node text{font-family:'Fraunces', serif; font-weight:600; fill:rgba(242,233,216,0.55); transition:fill .25s;}
+  .note-node circle{fill:rgba(242,233,216,0.06); stroke:rgba(242,233,216,0.18); stroke-width:1; transition:all .25s;}
+  .note-node.active circle{fill:var(--brass); stroke:var(--brass-bright); filter:drop-shadow(0 0 10px rgba(232,180,92,0.65));}
+  .note-node.active text{fill:var(--ink);}
+  .note-node.unmapped circle{stroke-dasharray:2 3;}
+
+  .result-card{
+    margin-top:22px; border-top:1px solid var(--line); padding-top:18px;
+  }
+  .result-label{font-size:11px; text-transform:uppercase; letter-spacing:.18em; color:rgba(242,233,216,0.45);}
+  .result-value{font-family:'Fraunces', serif; font-size:34px; font-weight:700; color:var(--brass-bright); margin:4px 0;}
+  .result-gesture{font-size:12px; color:rgba(242,233,216,0.55);}
+
+  .legend{margin-top:26px;}
+  .legend-title{font-size:11px; text-transform:uppercase; letter-spacing:.18em; color:rgba(242,233,216,0.45); margin-bottom:10px;}
+  .legend-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:6px 14px; font-size:12px;}
+  .legend-grid div{display:flex; justify-content:space-between; color:rgba(242,233,216,0.6); border-bottom:1px dotted rgba(242,233,216,0.1); padding-bottom:3px;}
+  .legend-grid span.note{color:var(--brass-bright); font-weight:500;}
+
+  footer{max-width:1080px; margin:56px auto 0; padding:0 24px; font-size:11px; color:rgba(242,233,216,0.35); border-top:1px solid var(--line); padding-top:18px;}
+  a{color:var(--brass-bright);}
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <span class="eyebrow">EfficientNet-B0 · in your browser</span>
+      <h1>Hand&nbsp;<em>chords</em></h1>
+      <p class="subtitle">Show a hand shape to the camera. The model reads the gesture and strikes the matching major chord — no server, the whole thing runs on-device via ONNX Runtime Web.</p>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel">
+      <div class="cam-wrap">
+        <video id="video" autoplay playsinline muted></video>
+        <div class="cam-frame"></div>
+        <div class="cam-overlay">
+          <span class="status-text"><span class="status-dot" id="statusDot"></span><span id="statusText">Model loading…</span></span>
+        </div>
+      </div>
+      <div class="controls">
+        <button id="startBtn" disabled>Start camera</button>
+        <button id="stopBtn" class="ghost" disabled>Stop</button>
+      </div>
+
+      <div class="readout">
+        <div>
+          <div class="row"><span>Confidence</span><span id="confPct">0%</span></div>
+          <div class="bar-track"><div class="bar-fill" id="confBar"></div></div>
+        </div>
+      </div>
+
+      <div class="legend">
+        <div class="legend-title">Gesture → chord key</div>
+        <div class="legend-grid" id="legendGrid"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 class="wheel-title">Chord wheel</h2>
+      <p class="wheel-sub">The lit note is what's currently recognized.</p>
+      <div class="wheel-holder">
+        <svg id="wheel" viewBox="0 0 320 320"></svg>
+      </div>
+
+      <div class="result-card">
+        <div class="result-label">Last played</div>
+        <div class="result-value" id="resultNote">—</div>
+        <div class="result-gesture" id="resultGesture">waiting for a recognizable gesture…</div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    Runs entirely client-side. Model: EfficientNet-B0 (18-class hand gesture classifier, ONNX). No video leaves your device.
+  </footer>
+</div>
+
+<audio id="chordAudio"></audio>
+
+<script>
+// ---------- configuration ----------
+
+// Class order matches PyTorch ImageFolder's alphabetical folder sort,
+// which is how the 18 output logits were indexed during training.
+const CLASS_NAMES = [
+  "call", "dislike", "fist", "four", "like", "mute", "ok", "one", "palm",
+  "peace", "peace_inverted", "rock", "stop", "stop_inverted", "three",
+  "three2", "two_up", "two_up_inverted"
+];
+
+// Gesture -> major note. Gestures not listed here have no assigned chord.
+const GESTURE_TO_NOTE = {
+  "one": "C",
+  "two_up": "Cs",
+  "three": "D",
+  "four": "Ds",
+  "palm": "E",
+  "fist": "F",
+  "ok": "Fs",
+  "like": "G",
+  "dislike": "Gs",
+  "rock": "A",
+  "call": "As",
+  "peace": "B",
+};
+
+// Display order around the wheel + labels
+const NOTE_ORDER = ["C","Cs","D","Ds","E","F","Fs","G","Gs","A","As","B"];
+const NOTE_LABEL = {C:"C",Cs:"C♯",D:"D",Ds:"D♯",E:"E",F:"F",Fs:"F♯",G:"G",Gs:"G♯",A:"A",As:"A♯",B:"B"};
+const NOTE_TO_FILE = Object.fromEntries(NOTE_ORDER.map(n => [n, `chords/${n}.mp3`]));
+
+const MODEL_URL = "model/efficientnet_b0_phase2_best.onnx";
+const MODEL_DATA_URL = "model/efficientnet_b0_phase2_best.onnx.data";
+const EXTERNAL_DATA_FILENAME = "efficientnet_b0_phase2_best.onnx.data"; // must match the location string baked into the .onnx graph
+
+const INPUT_SIZE = 224;
+const IMAGENET_MEAN = [0.485, 0.456, 0.406];
+const IMAGENET_STD  = [0.229, 0.224, 0.225];
+
+const CONFIDENCE_THRESHOLD = 0.55;
+const STABILITY_FRAMES = 3;      // consecutive agreeing predictions required before acting
+const INFER_INTERVAL_MS = 350;
+const REPLAY_COOLDOWN_MS = 1200; // min gap before the same chord can replay
+
+// ---------- state ----------
+let session = null;
+let stream = null;
+let inferring = false;
+let inferLoopHandle = null;
+let lastGesture = null;
+let stableCount = 0;
+let lastPlayed = { note: null, at: 0 };
+
+const video = document.getElementById("video");
+const startBtn = document.getElementById("startBtn");
+const stopBtn = document.getElementById("stopBtn");
+const statusDot = document.getElementById("statusDot");
+const statusText = document.getElementById("statusText");
+const confBar = document.getElementById("confBar");
+const confPct = document.getElementById("confPct");
+const resultNote = document.getElementById("resultNote");
+const resultGesture = document.getElementById("resultGesture");
+const chordAudio = document.getElementById("chordAudio");
+
+const offscreen = document.createElement("canvas");
+offscreen.width = INPUT_SIZE;
+offscreen.height = INPUT_SIZE;
+const offCtx = offscreen.getContext("2d", { willReadFrequently: true });
+
+// ---------- legend ----------
+function buildLegend() {
+  const grid = document.getElementById("legendGrid");
+  Object.entries(GESTURE_TO_NOTE).forEach(([gesture, note]) => {
+    const div = document.createElement("div");
+    div.innerHTML = `<span>${gesture.replace(/_/g, " ")}</span><span class="note">${NOTE_LABEL[note]}</span>`;
+    grid.appendChild(div);
+  });
+}
+buildLegend();
+
+// ---------- chord wheel (SVG) ----------
+function buildWheel() {
+  const svg = document.getElementById("wheel");
+  const cx = 160, cy = 160, r = 118, nodeR = 26;
+  const ns = "http://www.w3.org/2000/svg";
+  NOTE_ORDER.forEach((note, i) => {
+    const angle = (Math.PI * 2 * i) / NOTE_ORDER.length - Math.PI / 2;
+    const x = cx + r * Math.cos(angle);
+    const y = cy + r * Math.sin(angle);
+    const g = document.createElementNS(ns, "g");
+    g.setAttribute("class", "note-node" + (Object.values(GESTURE_TO_NOTE).includes(note) ? "" : " unmapped"));
+    g.setAttribute("id", "note-" + note);
+    const circle = document.createElementNS(ns, "circle");
+    circle.setAttribute("cx", x); circle.setAttribute("cy", y); circle.setAttribute("r", nodeR);
+    const text = document.createElementNS(ns, "text");
+    text.setAttribute("x", x); text.setAttribute("y", y + 6);
+    text.setAttribute("text-anchor", "middle");
+    text.setAttribute("font-size", "17");
+    text.textContent = NOTE_LABEL[note];
+    g.appendChild(circle); g.appendChild(text);
+    svg.appendChild(g);
+  });
+  // center label
+  const centerText = document.createElementNS(ns, "text");
+  centerText.setAttribute("x", cx); centerText.setAttribute("y", cy + 6);
+  centerText.setAttribute("text-anchor", "middle");
+  centerText.setAttribute("font-family", "Fraunces, serif");
+  centerText.setAttribute("font-size", "13");
+  centerText.setAttribute("fill", "rgba(242,233,216,0.35)");
+  centerText.textContent = "major";
+  svg.appendChild(centerText);
+}
+buildWheel();
+
+function highlightNote(note) {
+  NOTE_ORDER.forEach(n => {
+    document.getElementById("note-" + n).classList.toggle("active", n === note);
+  });
+}
+
+// ---------- status helpers ----------
+function setStatus(text, live) {
+  statusText.textContent = text;
+  statusDot.classList.toggle("live", !!live);
+}
+
+// ---------- model loading ----------
+async function loadModel() {
+  try {
+    setStatus("Loading model…", false);
+    ort.env.wasm.numThreads = 1; // safest default across GitHub Pages hosting (no cross-origin isolation)
+    session = await ort.InferenceSession.create(MODEL_URL, {
+      executionProviders: ["wasm"],
+      externalData: [{ path: EXTERNAL_DATA_FILENAME, data: MODEL_DATA_URL }],
+    });
+    setStatus("Model ready — start the camera", false);
+    startBtn.disabled = false;
+  } catch (err) {
+    console.error(err);
+    setStatus("Model failed to load — see console", false);
+  }
+}
+loadModel();
+
+// ---------- camera ----------
+async function startCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+    video.srcObject = stream;
+    await video.play();
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+    setStatus("Live", true);
+    inferLoopHandle = setInterval(runInferenceTick, INFER_INTERVAL_MS);
+  } catch (err) {
+    console.error(err);
+    setStatus("Camera permission denied", false);
+  }
+}
+
+function stopCamera() {
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  stream = null;
+  clearInterval(inferLoopHandle);
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
+  setStatus("Stopped", false);
+  confBar.style.width = "0%";
+  confPct.textContent = "0%";
+  highlightNote(null);
+}
+
+startBtn.addEventListener("click", startCamera);
+stopBtn.addEventListener("click", stopCamera);
+
+// ---------- preprocessing ----------
+function videoFrameToTensor() {
+  const vw = video.videoWidth, vh = video.videoHeight;
+  if (!vw || !vh) return null;
+  // center-crop square from the video, then draw scaled into 224x224
+  const side = Math.min(vw, vh);
+  const sx = (vw - side) / 2, sy = (vh - side) / 2;
+  offCtx.save();
+  // mirror horizontally to match the preview
+  offCtx.translate(INPUT_SIZE, 0);
+  offCtx.scale(-1, 1);
+  offCtx.drawImage(video, sx, sy, side, side, 0, 0, INPUT_SIZE, INPUT_SIZE);
+  offCtx.restore();
+
+  const { data } = offCtx.getImageData(0, 0, INPUT_SIZE, INPUT_SIZE);
+  const chw = new Float32Array(3 * INPUT_SIZE * INPUT_SIZE);
+  const plane = INPUT_SIZE * INPUT_SIZE;
+  for (let p = 0; p < plane; p++) {
+    const r = data[p * 4] / 255, g = data[p * 4 + 1] / 255, b = data[p * 4 + 2] / 255;
+    chw[p] = (r - IMAGENET_MEAN[0]) / IMAGENET_STD[0];
+    chw[plane + p] = (g - IMAGENET_MEAN[1]) / IMAGENET_STD[1];
+    chw[2 * plane + p] = (b - IMAGENET_MEAN[2]) / IMAGENET_STD[2];
+  }
+  return new ort.Tensor("float32", chw, [1, 3, INPUT_SIZE, INPUT_SIZE]);
+}
+
+function softmax(arr) {
+  const max = Math.max(...arr);
+  const exps = arr.map(v => Math.exp(v - max));
+  const sum = exps.reduce((a, b) => a + b, 0);
+  return exps.map(v => v / sum);
+}
+
+// ---------- inference loop ----------
+async function runInferenceTick() {
+  if (!session || inferring || !video.videoWidth) return;
+  inferring = true;
+  try {
+    const tensor = videoFrameToTensor();
+    if (!tensor) return;
+    const feeds = { [session.inputNames[0]]: tensor };
+    const out = await session.run(feeds);
+    const logits = out[session.outputNames[0]].data;
+    const probs = softmax(Array.from(logits));
+    let bestIdx = 0;
+    for (let i = 1; i < probs.length; i++) if (probs[i] > probs[bestIdx]) bestIdx = i;
+    const gesture = CLASS_NAMES[bestIdx];
+    const confidence = probs[bestIdx];
+
+    confBar.style.width = Math.round(confidence * 100) + "%";
+    confPct.textContent = Math.round(confidence * 100) + "%";
+
+    handlePrediction(gesture, confidence);
+  } catch (err) {
+    console.error(err);
+  } finally {
+    inferring = false;
+  }
+}
+
+function handlePrediction(gesture, confidence) {
+  if (confidence < CONFIDENCE_THRESHOLD) {
+    stableCount = 0;
+    lastGesture = null;
+    highlightNote(null);
+    return;
+  }
+
+  if (gesture === lastGesture) {
+    stableCount++;
+  } else {
+    lastGesture = gesture;
+    stableCount = 1;
+  }
+
+  if (stableCount < STABILITY_FRAMES) return;
+
+  const note = GESTURE_TO_NOTE[gesture];
+  if (!note) {
+    highlightNote(null);
+    resultGesture.textContent = `"${gesture.replace(/_/g, " ")}" — no chord assigned to this gesture`;
+    return;
+  }
+
+  highlightNote(note);
+  const now = performance.now();
+  const canReplay = note !== lastPlayed.note || (now - lastPlayed.at) > REPLAY_COOLDOWN_MS;
+  if (canReplay) {
+    playChord(note, gesture);
+    lastPlayed = { note, at: now };
+  }
+}
+
+function playChord(note, gesture) {
+  chordAudio.src = NOTE_TO_FILE[note];
+  chordAudio.currentTime = 0;
+  chordAudio.play().catch(() => { /* ignored: needs a user gesture on some browsers, camera start already provides one */ });
+  resultNote.textContent = NOTE_LABEL[note] + " major";
+  resultGesture.textContent = `from gesture "${gesture.replace(/_/g, " ")}"`;
+}
+</script>
+</body>
+</html>
