@@ -87,12 +87,10 @@ async function loadModel() {
     ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/';
 
     console.log('Loading model from GitHub:', MODEL_PATH);
-    const response = await fetch(MODEL_PATH);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch model: ${response.status} ${response.statusText}`);
-    }
-    const modelBytes = new Uint8Array(await response.arrayBuffer());
-    session = await ort.InferenceSession.create(modelBytes, { executionProviders: ['wasm'] });
+    // Pass the URL directly (not pre-fetched bytes) so onnxruntime-web can
+    // resolve and fetch the companion "efficientnet_b0_phase2_best.onnx.data"
+    // file that sits alongside the .onnx graph in the same folder.
+    session = await ort.InferenceSession.create(MODEL_PATH, { executionProviders: ['wasm'] });
     statusLine.textContent = 'model loaded';
     modelBanner.classList.remove('show');
   } catch (err) {
