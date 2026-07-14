@@ -85,7 +85,7 @@ const INFERENCE_INTERVAL_MS = 220;
 
 async function loadModel() {
   try {
-    ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.0/dist/';
+    ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/';
 
     console.log('Loading model from GitHub');
     console.log('Fetching:', MODEL_PATH);
