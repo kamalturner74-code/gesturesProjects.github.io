@@ -70,6 +70,15 @@ const INPUT_SIZE = 240;
 const MEAN = [0.485, 0.456, 0.406];
 const STD = [0.229, 0.224, 0.225];
 
+// ---- MODEL CONFIGURATION ----
+// Update MODEL_FILENAME to match your ONNX model file name
+const MODEL_FILENAME = 'model.onnx'; // Change this to your model filename
+// Construct the correct path for GitHub Pages and local development
+const BASE_PATH = window.location.pathname.includes('gesturesProjects.github.io') 
+  ? '/gesturesProjects.github.io/gesture-app/models/'
+  : './models/';
+const MODEL_PATH = BASE_PATH + MODEL_FILENAME;
+
 let session = null;
 let running = false;
 let lastGesture = null;
@@ -83,17 +92,11 @@ async function loadModel() {
   try {
     ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/';
 
-    const modelUrl = 'https://raw.githubusercontent.com/gesturesProjects/gesturesProjects.github.io/main/gesture-app/gesture-app/model/model%202.0-20260713T195603Z-2-001/model%202.0/efficientnet_b0_phase2_best.onnx';
+    // Construct model URL - works for both local and GitHub Pages
+    const modelUrl = new URL(MODEL_PATH, window.location.href).href;
 
-    console.log('Fetching model from', modelUrl);
-    const response = await fetch(modelUrl.href);
-    if (!response.ok) 
-      {
-      throw new Error(`Failed to fetch model: ${response.status} ${response.statusText}`);
-    }
-
-    const modelBytes = new Uint8Array(await response.arrayBuffer());
-    session = await ort.InferenceSession.create(modelBytes, { executionProviders: ['wasm'] });
+    console.log('Loading model from', modelUrl);
+    session = await ort.InferenceSession.create(modelUrl, { executionProviders: ['wasm'] });
     statusLine.textContent = 'model loaded';
     modelBanner.classList.remove('show');
   } catch (err) {
@@ -101,7 +104,7 @@ async function loadModel() {
     modelBanner.classList.add('show');
     modelBanner.innerHTML =
       `Model didn't load: <code>${(err && err.message) || err}</code><br><br>` +
-      `Failed to fetch model from GitHub. Check your internet connection and ensure the model file is committed to the repository.`;
+      `Ensure the model file exists at <code>${MODEL_PATH}</code> and that you're serving this site over HTTP (not opening the file directly).`;
     console.error(err);
   }
 }
