@@ -71,10 +71,15 @@ const MEAN = [0.485, 0.456, 0.406];
 const STD = [0.229, 0.224, 0.225];
 
 // ---- MODEL CONFIGURATION ----
+<<<<<<< HEAD
 // Prefer a TensorFlow.js GraphModel (`model.json`) if available. Fallback to ONNX runtime otherwise.
 const TF_MODEL_PATH = 'https://raw.githubusercontent.com/kamalturner74-code/gesturesProjects.github.io/0b089a547bcef294a6739f088cf6fa959669063f/gesture-app/gesture-app/model/model%202.0-20260713T195603Z-2-001/model%202.0/model.json';
 const MODEL_PATH = 'https://raw.githubusercontent.com/kamalturner74-code/gesturesProjects.github.io/0b089a547bcef294a6739f088cf6fa959669063f/gesture-app/gesture-app/model/model%202.0-20260713T195603Z-2-001/model%202.0/efficientnet_b0_phase2_best.onnx';
 const MODEL_DATA_PATH = 'https://raw.githubusercontent.com/kamalturner74-code/gesturesProjects.github.io/0b089a547bcef294a6739f088cf6fa959669063f/gesture-app/gesture-app/model/model%202.0-20260713T195603Z-2-001/model%202.0/efficientnet_b0_phase2_best.onnx.data';
+=======
+const MODEL_PATH = 'https://raw.githubusercontent.com/kamalturner74-code/gesturesProjects.github.io/0b089a547bcef294a6739f088cf6fa959669063f/gesture-app/gesture-app/model/model%202.0-20260713T1956[...]';
+const MODEL_DATA_PATH = 'https://raw.githubusercontent.com/kamalturner74-code/gesturesProjects.github.io/0b089a547bcef294a6739f088cf6fa959669063f/gesture-app/gesture-app/model/model%202.0-20260713[...]';
+>>>>>>> 26324acd64489042c1f1f0b3ada63c03a9a01b8a
 
 let session = null; // onnxruntime session
 let tfModel = null; // TensorFlow.js model
@@ -88,6 +93,7 @@ const INFERENCE_INTERVAL_MS = 220;
 
 async function loadModel() {
   try {
+<<<<<<< HEAD
     // Try TensorFlow.js model first (expects a model.json). If not present, fall back to ONNX.
     console.log('Checking for TF model at', TF_MODEL_PATH);
     const tfResp = await fetch(TF_MODEL_PATH, { method: 'HEAD' });
@@ -105,6 +111,14 @@ async function loadModel() {
     // Fallback: attempt to load ONNX runtime model (existing approach)
     console.log('TF model not found; falling back to ONNX runtime');
     ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/';
+=======
+    // Use pre-configured WASM paths from HTML
+    if (window.ortConfig) {
+      ort.env.wasm.wasmPaths = window.ortConfig.wasmPaths;
+    } else {
+      ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/';
+    }
+>>>>>>> 26324acd64489042c1f1f0b3ada63c03a9a01b8a
 
     console.log('Loading ONNX model from GitHub');
     console.log('Fetching:', MODEL_PATH);
