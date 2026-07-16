@@ -202,7 +202,7 @@ const GESTURE_TO_NOTE = {
   "ok": "Fs",
   "dislike": "G",
   "like": "Gs",
-  "rock": "A",
+  "one": "A",
   "call": "As",
   "rock": "B",
   "mute": "finishhim"
@@ -210,7 +210,7 @@ const GESTURE_TO_NOTE = {
 
 // Display order around the wheel + labels
 const NOTE_ORDER = ["C","Cs","D","Ds","E","F","Fs","G","Gs","A","As","B","finishhim"];
-const NOTE_LABEL = {C:"C",Cs:"C♯",D:"D",Ds:"D♯",E:"E",F:"F",Fs:"F♯",G:"G",Gs:"G♯",A:"A",As:"A♯",B:"B",finishhim:"Finish"};
+const NOTE_LABEL = {C:"C",Cs:"C#",D:"D",Ds:"D#",E:"E",F:"F",Fs:"F#",G:"G",Gs:"G#",A:"A",As:"A#",B:"B",finishhim:"Finish"};
 const NOTE_TO_FILE = Object.fromEntries(NOTE_ORDER.map(n => [n, `Chords/${n}.mp3`]));
 
 const MODEL_URL = "model/efficientnet_b0_phase2_best.onnx";
