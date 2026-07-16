@@ -193,25 +193,25 @@ const CLASS_NAMES = [
 
 // Gesture -> major note. Gestures not listed here have no assigned chord.
 const GESTURE_TO_NOTE = {
-  "one": "C",
-  "two_up": "Cs",
-  "three2": "D",
-  "four": "Ds",
-  "palm": "E",
-  "fist": "F",
+  "fist": "C",
+  "palm": "Cs",
+  "stop": "D",
+  "stop_inverted": "Ds",
+  "peace": "E",
+  "three2": "F",
   "ok": "Fs",
-  "like": "G",
-  "dislike": "Gs",
+  "dislike": "G",
+  "like": "Gs",
   "rock": "A",
   "call": "As",
-  "stop": "B",
+  "rock": "B",
   "mute": "finishhim"
 };
 
 // Display order around the wheel + labels
 const NOTE_ORDER = ["C","Cs","D","Ds","E","F","Fs","G","Gs","A","As","B","finishhim"];
 const NOTE_LABEL = {C:"C",Cs:"C♯",D:"D",Ds:"D♯",E:"E",F:"F",Fs:"F♯",G:"G",Gs:"G♯",A:"A",As:"A♯",B:"B",finishhim:"Finish"};
-const NOTE_TO_FILE = Object.fromEntries(NOTE_ORDER.map(n => [n, `chords/${n}.mp3`]));
+const NOTE_TO_FILE = Object.fromEntries(NOTE_ORDER.map(n => [n, `Chords/${n}.mp3`]));
 
 const MODEL_URL = "model/efficientnet_b0_phase2_best.onnx";
 const MODEL_DATA_URL = "model/efficientnet_b0_phase2_best.onnx.data";
@@ -221,9 +221,9 @@ const INPUT_SIZE = 224;
 const IMAGENET_MEAN = [0.485, 0.456, 0.406];
 const IMAGENET_STD  = [0.229, 0.224, 0.225];
 
-const CONFIDENCE_THRESHOLD = 0.55;
+const CONFIDENCE_THRESHOLD = 0.55; // min probability to consider a prediction valid
 const STABILITY_FRAMES = 1;      // consecutive agreeing predictions required before acting
-const INFER_INTERVAL_MS = 350;
+const INFER_INTERVAL_MS = 200; // how often to run inference (ms)
 const REPLAY_COOLDOWN_MS = 100000; // min gap before the same chord can replay
 
 // ---------- state ----------
