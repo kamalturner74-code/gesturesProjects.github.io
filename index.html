@@ -221,10 +221,10 @@ const INPUT_SIZE = 224;
 const IMAGENET_MEAN = [0.485, 0.456, 0.406];
 const IMAGENET_STD  = [0.229, 0.224, 0.225];
 
-const CONFIDENCE_THRESHOLD = 0.55; // min probability required to consider a prediction valid
-const STABILITY_FRAMES = 1;      // consecutive agreeing predictions required before acting
+const CONFIDENCE_THRESHOLD = 0.55;
+const STABILITY_FRAMES = 3;      // consecutive agreeing predictions required before acting
 const INFER_INTERVAL_MS = 350;
-const REPLAY_COOLDOWN_MS = 10; // min gap before the same chord can replay
+const REPLAY_COOLDOWN_MS = 1000; // min gap before the same chord can replay
 
 // ---------- state ----------
 let session = null;
