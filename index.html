@@ -224,7 +224,7 @@ const IMAGENET_STD  = [0.229, 0.224, 0.225];
 const CONFIDENCE_THRESHOLD = 0.55; // min probability to consider a prediction valid
 const STABILITY_FRAMES = 1;      // consecutive agreeing predictions required before acting
 const INFER_INTERVAL_MS = 200; // how often to run inference (ms)
-const REPLAY_COOLDOWN_MS = 100000; // min gap before the same chord can replay
+const REPLAY_COOLDOWN_MS = 500; // min gap before the same chord can replay
 
 // ---------- state ----------
 let session = null;
